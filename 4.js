@@ -1,3 +1,5 @@
+// --- Day 4: Giant Squid --- https://adventofcode.com/2021/day/4
+
 const fs = require('fs');
 const input = fs.readFileSync('./4.input.txt', 'utf-8').split('\n\n');
 

@@ -82,6 +82,7 @@ Transmission (HEX) => a single packet at its outermost layer
 
 const versions = [];
 function parseStream(transmission, limit = Infinity) {
+  let values = [];
   let index = 0;
   // D2FE28 ---> 110100101111111000101000
   while (index < transmission.length && limit > 0) {
@@ -96,7 +97,7 @@ function parseStream(transmission, limit = Infinity) {
     index += 3; // index = 6 remaining = 101111111000101000
 
     if (id === 4) {
-      let literalValue = "";
+      let literalValue = 0;
 
       let lastGroupReached = false;
       while (!lastGroupReached) {
@@ -104,34 +105,87 @@ function parseStream(transmission, limit = Infinity) {
           lastGroupReached = true;
         }
         index++;
-        literalValue += transmission.slice(index, index + 4);
+        literalValue += toDec(transmission.slice(index, index + 4));
         index += 4;
       }
+      values.push(literalValue);
     } else {
+      let valuesOfSubPackets = [];
       const typeId = transmission[index];
       index++;
       if (typeId === "0") {
         const length = toDec(transmission.slice(index, index + 15));
         index += 15;
-        parseStream(transmission.slice(index, index + length));
+        const { values: subValuesResult } = parseStream(
+          transmission.slice(index, index + length)
+        );
+        valuesOfSubPackets = subValuesResult;
         index += length;
       } else {
         const numberOfSubPackets = toDec(transmission.slice(index, index + 11));
         index += 11;
-        const parsedLength = parseStream(transmission.slice(index), numberOfSubPackets);
+        const { values: subValuesResult, index: parsedLength } = parseStream(
+          transmission.slice(index),
+          numberOfSubPackets
+        );
+        valuesOfSubPackets = subValuesResult;
         index += parsedLength;
       }
+      let result;
+      switch (id) {
+        case 0: // sum of sub-packets
+          result = valuesOfSubPackets.reduce((a, b) => a + b, 0);
+          break;
+        case 1: // multiply sub-packets
+          result = valuesOfSubPackets.reduce((acc, a) => a * acc, 1);
+          break;
+        case 2: // minimum of values of sub-packets
+          result = Math.min(...valuesOfSubPackets);
+          break;
+        case 3: // maximum of values of sub-packets
+          result = Math.max(...valuesOfSubPackets);
+          break;
+        case 5:
+          {
+            // 1 if first sub packet is greater than second
+            const [first, second] = valuesOfSubPackets;
+            result = first > second ? 1 : 0;
+          }
+          break;
+        case 6:
+          {
+            // 1 if first sub packet is lesser than second
+            const [first, second] = valuesOfSubPackets;
+            result = first < second ? 1 : 0;
+          }
+          break;
+        case 7:
+          {
+            // 1 if two sub packets are equal
+            const [first, second] = valuesOfSubPackets;
+            result = first === second ? 1 : 0;
+          }
+          break;
+
+        default:
+          break;
+      }
+      values.push(result);
     }
+
     const remaining = transmission.slice(index);
     if (toDec(remaining) === 0) {
       break;
     }
     limit--;
   }
-
-  return index;
+  console.log(values);
+  return { values, index };
 }
 
-parseStream(TnBits);
-console.log(versions);
-console.log('sum:', versions.reduce((a,b) => a + b, 0));
+const { values } = parseStream(TnBits);
+console.log(values);
+console.log(
+  "sum:",
+  versions.reduce((a, b) => a + b, 0)
+);

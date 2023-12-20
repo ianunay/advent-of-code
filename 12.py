@@ -7,18 +7,13 @@ HeightMap = []
 
 def getEligibleNeighbors(row, column):
     result = []
-    currentVal = ord(HeightMap[row][column])
-    
-    if(currentVal == 83): # set 'S' to 'a'
-      currentVal = 97
+    currentHeight = HeightMap[row][column]
 
     for [dr, dc] in [[-1, 0], [0, -1], [1, 0], [0, 1]]:
         rowIndex, columnIndex = row + dr, column + dc
         if (-1 < rowIndex < len(HeightMap) and -1 < columnIndex < len(HeightMap[0])):
-            val = ord(HeightMap[rowIndex][columnIndex])
-            if(val == 69): # set 'E' to 'z'
-              val = 122
-            if(val <= currentVal + 1):
+            newHeight = HeightMap[rowIndex][columnIndex]
+            if(newHeight <= currentHeight + 1):
               result.append([rowIndex, columnIndex])
     
     return result
@@ -37,40 +32,45 @@ def parseInput():
             ERow = rowIndex
             EColumn = EIndex
 
-        row = list(line)
+        row = []
+        for char in list(line):
+          if(char == 'S'):
+            row.append(ord('a'))
+          elif(char == 'E'):
+            row.append(ord('z') + 1)
+          else:
+            row.append(ord(char))
         HeightMap.append(row)
 
     return [SRow, SColumn, ERow, EColumn]
 
 
 SRow, SColumn, ERow, EColumn = parseInput()
-print(SRow, SColumn, ERow, EColumn)
+print(SRow, SColumn, ERow, EColumn, HeightMap)
 
 def findShortestPathBFS():
     queue = deque()
     visited = set()
+    destinationHeight = ord('z') + 1
 
-    for item in getEligibleNeighbors(SRow, SColumn):
-      queue.append([item])
+    queue.append((0, [SRow, SColumn]))
     
     while len(queue) > 0:
-      path = queue.popleft()
-      row, column = path[-1]
+      distance, location = queue.popleft()
+      row, column = location
 
-      if(HeightMap[row][column] == 'E'):
+      if(HeightMap[row][column] == destinationHeight):
         print('Found')
-        return path
+        return distance
       
       visited.add((row, column))
 
       for [rowIndex, columnIndex] in getEligibleNeighbors(row, column):
         if((rowIndex, columnIndex) not in visited):
-          new_path = list(path)
-          new_path.append([rowIndex, columnIndex])
-          print(HeightMap[rowIndex][columnIndex])
-          queue.append(new_path)
+          new_data = (distance + 1, [rowIndex, columnIndex])
+          queue.append(new_data)
 
       
 
-path = findShortestPathBFS()
-print(path, [HeightMap[row][column] for [row, column] in path], len(path))
+data = findShortestPathBFS()
+print(data)
